@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React 动态布局演示</title>
+
+    <!-- 1. 引入 React 核心库 -->
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
+
+    <!-- 2. 引入 Babel 用于在浏览器中编译 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 3. 定义 CSS 样式 -->
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      /* 卡片容器 */
+      .card-box {
+        border: 1px solid #ccc;
+        padding: 15px;
+        width: 100%;
+        /* 关键：限制最大宽度来模拟空间不足的情况，你可以拖动浏览器窗口测试 */
+        max-width: 400px;
+        line-height: 1.6;
+        font-size: 16px;
+        overflow: hidden;
+        background: #fff;
+        transition: all 0.3s;
+      }
+
+      /* 右上角浮动组 */
+      .float-group {
+        float: right;
+        display: flex;
+        gap: 8px;
+        margin-left: 10px;
+      }
+
+      /* 按钮样式 */
+      .btn {
+        height: 25px;
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        border: 1px solid #999;
+        background: #f0f0f0;
+        border-radius: 4px;
+        white-space: nowrap; /* 防止按钮内换行 */
+      }
+
+      /* 按钮1特殊样式：在文本中时 */
+      .btn-inline {
+        margin-left: 8px;
+        vertical-align: middle;
+        display: inline-block;
+      }
+
+      /* 文本 */
+      .title-text {
+        word-break: break-all; /* 允许长单词换行 */
+      }
+
+      /* 控制区样式 */
+      .controls {
+        margin-bottom: 20px;
+      }
+      .controls textarea {
+        width: 100%;
+        height: 60px;
+        padding: 10px;
+        font-size: 14px;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        color: white;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- 4. React 代码逻辑 -->
+    <script type="text/babel">
+      const { useState, useEffect, useLayoutEffect, useRef } = React;
+
+      // 辅助函数：Canvas 
+      // 测量文本宽度 (高性能且准确)
+      function measureTextWidth(text, font) {
+        const canvas =
+          measureTextWidth.canvas ||
+          (measureTextWidth.canvas = document.createElement("canvas"));
+        const context = canvas.getContext("2d");
+        context.font = font;
+        const metrics = context.measureText(text);
+        return metrics.width;
+      }
+
+      // --- 核心组件: SmartCard ---
+      const SmartCard = ({ title }) => {
+        const [isMultiLine, setIsMultiLine] = useState(false);
+
+        // Refs
+        const containerRef = useRef(null);
+        // 我们使用 ref 来存储按钮的宽度，避免每次渲染都去 DOM 拿
+        const btnWidths = useRef({ btn1: 0, btn2: 0 });
+
+        // 布局计算主逻辑
+        const checkLayout = () => {
+          if (!containerRef.current) return;
+
+          const container = containerRef.current;
+
+          // 1. 获取容器内容区宽度 (width - padding)
+          const style = window.getComputedStyle(container);
+          const paddingX =
+            parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+          const contentWidth = container.clientWidth - paddingX;
+
+          // 2. 估算或获取按钮宽度
+          // 如果是第一次运行，我们可能还没拿到真实的按钮DOM，这里给一个估算值
+          // 或者在组件首次渲染时通过回调获取。为了简化 Demo，这里假设按钮大约 60-70px
+          // 更好的做法是在 useLayoutEffect 里通过 querySelector 获取一次
+          const btn1El = container.querySelector(".btn-follow");
+          const btn2El = container.querySelector(".btn-right");
+
+          let w1 = btnWidths.current.btn1;
+          let w2 = btnWidths.current.btn2;
+
+          if (btn1El) w1 = btn1El.offsetWidth;
+          if (btn2El) w2 = btn2El.offsetWidth;
+
+          // 更新 ref 缓存
+          btnWidths.current = { btn1: w1, btn2: w2 };
+
+          // 3. 测量文本纯宽度
+          const textWidth = measureTextWidth(title, style.font);
+
+          // 4. 计算：文本 + 按钮1 + 按钮2 + 安全间距(30px)
+          // 如果这几个加起来超过了容器宽，说明单行放不下
+          const totalNeeded = textWidth + w1 + w2 + 30;
+
+          const shouldBeMulti = totalNeeded > contentWidth;
+
+          // 只有状态改变时才触发重渲染，避免死循环
+          if (shouldBeMulti !== isMultiLine) {
+            setIsMultiLine(shouldBeMulti);
+          }
+        };
+
+        // 当标题变化 或 窗口大小变化时，重新计算
+        useLayoutEffect(() => {
+          checkLayout();
+        });
+
+        useEffect(() => {
+          const observer = new ResizeObserver(() => checkLayout());
+          if (containerRef.current) {
+            observer.observe(containerRef.current);
+          }
+          return () => observer.disconnect();
+        }, [title, isMultiLine]); // 依赖项包含 isMultiLine 确保切换布局后再次校准
+
+        return (
+          <div>
+            <div
+              className="status-badge"
+              style={{ background: isMultiLine ? "#ff4d4f" : "#52c41a" }}
+            >
+              当前状态:{" "}
+              {isMultiLine ? "多行模式 (Float布局)" : "单行模式 (Inline布局)"}
+            </div>
+
+            <div className="card-box" ref={containerRef}>
+              {/* --- A区域: 右上角浮动组 --- */}
+              <div className="float-group">
+                {/* 如果是多行模式，按钮1 被渲染在这里（按钮2的前面） */}
+                {isMultiLine && (
+                  <button className="btn btn-follow">跟随按钮</button>
+                )}
+
+                <button className="btn btn-right">右上角</button>
+              </div>
+
+              {/* --- B区域: 文本 --- */}
+              <span className="title-text">{title}</span>
+
+              {/* --- C区域: 文本后跟随 --- */}
+              {/* 如果是单行模式，按钮1 被渲染在这里 */}
+              {!isMultiLine && (
+                <button className="btn btn-follow btn-inline">跟随按钮</button>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      // --- 应用入口 ---
+      const App = () => {
+        const [text, setText] = useState("这里是标题内容文本");
+
+        return (
+          <div className="container">
+            <h2>React 动态跟随布局演示</h2>
+            <p style={{ color: "#666", fontSize: "14px" }}>
+              逻辑：单行时按钮跟随文本尾部；多行时按钮1和按钮2一起浮动在右上角，文字环绕。
+            </p>
+
+            <div className="controls">
+              <label>尝试修改文本长度：</label>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+            </div>
+
+            <SmartCard title={text} />
+          </div>
+        );
+      };
+
+      // 5. 挂载 React 应用
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>

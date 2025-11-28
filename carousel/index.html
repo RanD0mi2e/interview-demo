@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .carousel-wrapper {
+        overflow: hidden;
+        width: 300px; /* Slide Width */
+        margin: 50px auto;
+        border: 2px solid #333;
+        cursor: grab;
+        touch-action: none; /* Important: Disable browser scrolling */
+      }
+
+      .carousel-track {
+        display: flex;
+        /* We use 'transform' for movement, not left/margin */
+        will-change: transform;
+      }
+
+      .slide {
+        min-width: 300px;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+        user-select: none; /* Prevent text highlighting while dragging */
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      /* Different colors for visibility */
+      .slide:nth-child(odd) {
+        background: #f0f0f0;
+      }
+      .slide:nth-child(even) {
+        background: #e0e0e0;
+      }
+
+      /* The Damping Effect Class */
+      .animating {
+        /* ease-out gives the "damping" feel (fast start, slow end) */
+        transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="carousel-wrapper">
+      <div class="carousel-track">
+        <!-- CLONE of Last Slide (3) -->
+        <div class="slide">3 (Clone)</div>
+
+        <!-- Real Slides -->
+        <div class="slide">1</div>
+        <div class="slide">2</div>
+        <div class="slide">3</div>
+
+        <!-- CLONE of First Slide (1) -->
+        <div class="slide">1 (Clone)</div>
+      </div>
+    </div>
+
+    <script>
+      const track = document.querySelector(".carousel-track");
+      const wrapper = document.querySelector(".carousel-wrapper");
+      const slides = document.querySelectorAll(".slide");
+
+      const slideWidth = 300;
+      let currentIndex = 1; // Start at 1 because 0 is a clone
+
+      // State variables
+      let isDragging = false;
+      let startPos = 0;
+      let currentTranslate = 0;
+      let prevTranslate = 0;
+      let animationID;
+
+      // Velocity Calculation Variables
+      let startTime = 0;
+      let startX = 0;
+
+      // 1. Initialize Position
+      // Move to the first "Real" slide
+      currentTranslate = -currentIndex * slideWidth;
+      prevTranslate = currentTranslate;
+      setSliderPosition();
+
+      // 2. Event Listeners (Pointer events cover both Mouse and Touch)
+      wrapper.addEventListener("pointerdown", touchStart);
+      wrapper.addEventListener("pointermove", touchMove);
+      wrapper.addEventListener("pointerup", touchEnd);
+      wrapper.addEventListener("pointerleave", touchEnd); // If mouse leaves area
+      track.addEventListener("transitionend", checkInfiniteLoop);
+
+      function touchStart(index) {
+        isDragging = true;
+        startPos = index.pageX; // Get initial X
+        startX = index.pageX; // For velocity calc
+        startTime = new Date().getTime(); // Record time
+
+        wrapper.style.cursor = "grabbing";
+
+        // Stop any current animation immediately so we can grab it
+        track.classList.remove("animating");
+
+        // Save the current translate value (in case we grab it mid-animation)
+        // We rely on the JS variable 'currentTranslate', not the computed CSS
+        animationID = requestAnimationFrame(animation);
+      }
+
+      function touchMove(event) {
+        if (isDragging) {
+          const currentPosition = event.pageX;
+          const currentDiff = currentPosition - startPos;
+
+          // Move the slider 1:1 with the finger
+          currentTranslate = prevTranslate + currentDiff;
+        }
+      }
+
+      function touchEnd() {
+        isDragging = false;
+        cancelAnimationFrame(animationID);
+        wrapper.style.cursor = "grab";
+
+        const movedBy = currentTranslate - prevTranslate;
+
+        // --- VELOCITY LOGIC ---
+        const endTime = new Date().getTime();
+        const timeTaken = endTime - startTime;
+        const totalDist = event.pageX - startX;
+
+        // Calculate Velocity (pixels per ms)
+        const velocity = Math.abs(totalDist / timeTaken);
+
+        // Thresholds
+        const moveThreshold = 100; // Must drag at least 100px to change slide...
+        const velocityThreshold = 0.5; // ...UNLESS you flick it fast (> 0.5px/ms)
+
+        // Determine direction
+        if (
+          movedBy < -moveThreshold ||
+          (movedBy < 0 && velocity > velocityThreshold)
+        ) {
+          // Next Slide
+          currentIndex += 1;
+        } else if (
+          movedBy > moveThreshold ||
+          (movedBy > 0 && velocity > velocityThreshold)
+        ) {
+          // Previous Slide
+          currentIndex -= 1;
+        }
+
+        // Snap to the new index
+        setPositionByIndex();
+      }
+
+      function setPositionByIndex() {
+        // Add the CSS transition class for the "Damping" effect
+        track.classList.add("animating");
+
+        currentTranslate = -currentIndex * slideWidth;
+        prevTranslate = currentTranslate;
+        setSliderPosition();
+      }
+
+      function checkInfiniteLoop() {
+        // THE DECEPTION TRICK
+        // Runs after the CSS transition finishes
+        track.classList.remove("animating"); // Disable animation for the instant jump
+
+        if (currentIndex === 0) {
+          // We are at Clone of Last -> Jump to Real Last
+          currentIndex = slides.length - 2;
+          currentTranslate = -currentIndex * slideWidth;
+          prevTranslate = currentTranslate;
+          setSliderPosition();
+        }
+
+        if (currentIndex === slides.length - 1) {
+          // We are at Clone of First -> Jump to Real First
+          currentIndex = 1;
+          currentTranslate = -currentIndex * slideWidth;
+          prevTranslate = currentTranslate;
+          setSliderPosition();
+        }
+      }
+
+      // Helper to actually apply the transform
+      function setSliderPosition() {
+        track.style.transform = `translateX(${currentTranslate}px)`;
+      }
+
+      // Animation loop (Keeps dragging smooth)
+      function animation() {
+        setSliderPosition();
+        if (isDragging) requestAnimationFrame(animation);
+      }
+    </script>
+  </body>
+</html>

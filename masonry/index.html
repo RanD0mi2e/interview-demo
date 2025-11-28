@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>瀑布流</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f5f5f5;
+        font-family: sans-serif;
+        overflow: hidden;
+      }
+
+      /* 滚动容器 */
+      .scroll-container {
+        height: 100vh;
+        overflow-y: auto;
+        position: relative;
+        /* 启用原生滚动平滑 */
+        scroll-behavior: smooth;
+      }
+
+      /* 卡片基础样式 */
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.1s; /* 仅用于 hover 效果，不要用于布局 */
+      }
+
+      .card:hover {
+        z-index: 10;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      /* 骨架屏与图片占位 */
+      .image-wrapper {
+        position: relative;
+        background-color: #e0e0e0;
+        width: 100%;
+      }
+
+      .image-content {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        position: absolute;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        transition: opacity 0.3s ease-in;
+      }
+
+      .image-content.loaded {
+        opacity: 1;
+      }
+
+      .card-footer {
+        padding: 10px;
+        font-size: 14px;
+        color: #333;
+      }
+
+      .loading-spinner {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+
+    <!-- 引入 React 和 Babel -->
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- 引入编译后的 JS 文件 -->
+    <script type="module" src="src/app.jsx"></script>
+  </body>
+</html>
