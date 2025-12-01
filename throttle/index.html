@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>防抖&节流</title>
+</head>
+<body>
+  <button id="btn">触发</button>
+
+  <script type="module">
+    // 节流
+    import { throttle } from './throttle.js'
+    // 防抖
+    import { debounce } from './debounce.js'
+
+    const btnDOM = document.getElementById('btn')
+    // btnDOM.onclick = throttle((a) => console.log('trigger', a), 1000)
+    btnDOM.onclick = debounce((a) => console.log('trigger', a), 1000)
+  </script>
+</body>
+</html>
