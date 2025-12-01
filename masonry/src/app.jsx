@@ -108,7 +108,7 @@ const MasonryList = () => {
   const handleScroll = useCallback((e) => {
     const target = e.target;
     
-    if (target.scrollHeight - target.scrollTop - target.clientHeight < 200) {
+    if (target.scrollHeight - target.scrollTop - target.clientHeight < 800) {
       loadMore();
     }
 
