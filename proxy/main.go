@@ -7,7 +7,7 @@ import (
 )
 
 // 默认代理监听端口
-const proxyPort = "8080"
+const proxyPort = "7895"
 
 func main() {
 	// 监听本地所有网络接口的指定端口
