@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>动态弹窗交互设计</title>
+    <style>
+      body {
+        font-family: "Microsoft YaHei", sans-serif;
+        background-color: #f0f2f5;
+        height: 100vh;
+        margin: 0;
+        display: flex;
+        /* 模拟图一：按钮在不同位置 */
+        justify-content: space-between;
+        padding: 50px;
+        box-sizing: border-box;
+      }
+
+      /* 1. 可点击元素/按钮样式 */
+      .trigger-btn {
+        width: 120px;
+        height: 40px;
+        background-color: #007aff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+        /* 用于演示不同位置 */
+        align-self: flex-start;
+      }
+
+      /* 为了演示，放一个按钮在右下角 */
+      .btn-right {
+        align-self: flex-end;
+        background-color: #34c759;
+      }
+
+      /* 遮罩层 */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease; /* 遮罩层渐显 */
+        z-index: 999;
+      }
+
+      /* 遮罩层激活状态 */
+      .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      /* 2. 弹窗主体设计 */
+      .modal-card {
+        position: fixed;
+        background: white;
+        border-radius: 8px; /* 结束时的圆角 */
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        z-index: 1000;
+
+        /* 关键：设置过渡属性，对应图三的说明 */
+        /* 0.3s 执行时间 */
+        transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+
+        /* 初始隐藏状态，透明且不可点击 */
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* 3. 弹窗居中状态 (图二效果) */
+      .modal-card.active {
+        opacity: 1;
+        pointer-events: auto;
+
+        /* 居中核心代码 */
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+
+        /* 指定宽高的目标尺寸 */
+        width: 500px !important;
+        height: 300px !important;
+      }
+
+      /* 弹窗内容区域 */
+      .modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-body {
+        padding: 20px;
+        opacity: 0; /* 内容延迟显示，防止动画过程中文字重排 */
+        transition: opacity 0.1s 0.2s; /* 稍微晚一点出现 */
+      }
+      .modal-card.active .modal-body {
+        opacity: 1;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #999;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 模拟图一：不同位置的按钮 -->
+    <button class="trigger-btn" onclick="openModal(this)">点击左上角</button>
+    <button class="trigger-btn btn-right" onclick="openModal(this)">
+      点击右下角
+    </button>
+
+    <!-- 遮罩层 -->
+    <div class="modal-overlay" id="overlay" onclick="closeModal()"></div>
+
+    <!-- 弹窗组件 -->
+    <div class="modal-card" id="modal">
+      <div class="modal-header">
+        <span style="font-weight: bold">功能弹窗</span>
+        <button class="close-btn" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p>过渡效果演示：</p>
+        <p>1. 弹窗从按钮位置飞出。</p>
+        <p>2. 尺寸同时缩放到指定宽高。</p>
+        <p>3. 整个过程耗时 0.3s。</p>
+      </div>
+    </div>
+
+    <script>
+      const modal = document.getElementById("modal");
+      const overlay = document.getElementById("overlay");
+      let lastTriggerBtn = null; // 记录上次点击的是哪个按钮，用于关闭动画
+
+      function openModal(btn) {
+        console.log('btn', btn)
+        lastTriggerBtn = btn;
+
+        // 1. 获取按钮的位置信息 (getBoundingClientRect)
+        const rect = btn.getBoundingClientRect();
+        modal.style.transition = 'none';
+        console.log('rect', rect)
+        // 2. 初始化弹窗位置：强制设置为按钮的位置和大小
+        // 这里不使用 active 类，而是直接操作内联样式覆盖
+        modal.style.top = rect.top + "px";
+        modal.style.left = rect.left + "px";
+        modal.style.width = rect.width + "px";
+        modal.style.height = rect.height + "px";
+        modal.style.transform = "translate(0, 0)"; // 初始不偏移
+        modal.style.borderRadius = "4px"; // 初始圆角跟按钮一样
+
+        // 让浏览器先渲染这个初始位置（强制重绘）
+        // 这一步非常重要，否则浏览器会直接跳到终点状态，没有动画
+        modal.offsetHeight
+
+        modal.style.transition = '';
+
+        // 3. 激活弹窗：添加 active 类
+        // CSS 中的 .active 会将 top/left 设为 50%，并应用 transform: translate(-50%, -50%)
+        modal.classList.add("active");
+        overlay.classList.add("active");
+      }
+
+      function closeModal() {
+        if (!lastTriggerBtn) return;
+
+        // 1. 移除 active 类，准备执行关闭动画
+        modal.classList.remove("active");
+        overlay.classList.remove("active");
+
+        // 2. 重新获取按钮当前位置（防止窗口缩放后按钮位置变了）
+        const rect = lastTriggerBtn.getBoundingClientRect();
+
+        // 3. 将弹窗样式强制设置回按钮的位置
+        // 此时 CSS 的 transition 会负责从居中状态缩回这个位置
+        modal.style.top = rect.top + "px";
+        modal.style.left = rect.left + "px";
+        modal.style.width = rect.width + "px";
+        modal.style.height = rect.height + "px";
+        modal.style.transform = "translate(0, 0)";
+      }
+    </script>
+  </body>
+</html>

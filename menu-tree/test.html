@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script type="module">
+    import { getTrees } from './handler.js'
+    import { mockTree } from './mockTree.js'
+    const result = getTrees(mockTree, 0, 'menuId', 'parent', 'name')
+    console.log('result:', result)
+  </script>
+</body>
+</html>
